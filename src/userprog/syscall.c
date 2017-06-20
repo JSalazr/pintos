@@ -50,6 +50,7 @@ unsigned sys_tell(int fd);
 void sys_close(int fd);
 int sys_read(int fd, void *buffer, unsigned size);
 int sys_write(int fd, const void *buffer, unsigned size);
+int sys_test(struct mini_thread *mt);
 
 #ifdef VM
 mmapid_t sys_mmap(int fd, void *);
@@ -104,6 +105,13 @@ syscall_handler (struct intr_frame *f)
   // Dispatch w.r.t system call number
   // SYS_*** constants are defined in syscall-nr.h
   switch (syscall_number) {
+  case SYS_TEST:
+    {
+      void *mt;
+      memread_user(f->esp + 4, &mt, sizeof(mt));
+      f->eax = sys_test((struct mini_thread*)mt);
+      break;
+    }
   case SYS_HALT: // 0
     {
       sys_halt();
@@ -353,6 +361,13 @@ syscall_handler (struct intr_frame *f)
 
 void sys_halt(void) {
   shutdown_power_off();
+}
+
+int sys_test(struct mini_thread *mt){
+  enum intr_level oldlevel = intr_disable ();
+  int ret_val = find_thread(mt);
+  intr_set_level (oldlevel);
+  return ret_val;
 }
 
 void sys_exit(int status) {

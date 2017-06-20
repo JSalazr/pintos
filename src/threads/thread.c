@@ -33,6 +33,7 @@ static struct list all_list;
 
 /* Idle thread. */
 static struct thread *idle_thread;
+int cont = 0;
 
 /* Initial thread, the thread running init.c:main(). */
 static struct thread *initial_thread;
@@ -80,6 +81,28 @@ void thread_awake (int64_t current_tick);
 static bool comparator_greater_thread_priority
   (const struct list_elem *, const struct list_elem *, void *aux);
 
+
+int find_thread(struct mini_thread *mt){
+  struct list_elem *e;
+
+  ASSERT (intr_get_level () == INTR_OFF);
+
+  for (e = list_begin (&all_list); e != list_end (&all_list); e = list_next (e)){
+    struct thread *t = list_entry (e, struct thread, allelem);
+    if(t->tid == mt->tid && t->status != THREAD_DYING){
+      mt->cant_run = t->cant_run;
+      mt->cant_sleep = t->cant_sleep;
+      mt->priority = t->priority;
+      return 0;
+    }
+  }
+
+  mt->cant_run = 0;
+  mt->cant_sleep = 0;
+  mt->priority = 0;
+  
+  return 1;
+}
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -226,6 +249,8 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
+  t->cant_run = 0;
+  t->cant_sleep = 0;
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -287,7 +312,10 @@ thread_block (void)
   ASSERT (!intr_context ());
   ASSERT (intr_get_level () == INTR_OFF);
 
+  thread_current ()->cant_sleep = thread_current ()->cant_sleep + 1; 
   thread_current ()->status = THREAD_BLOCKED;
+  
+  
   schedule ();
 }
 
@@ -314,6 +342,7 @@ thread_unblock (struct thread *t)
   list_insert_ordered (&ready_list, &t->elem, comparator_greater_thread_priority, NULL);
 
   t->status = THREAD_READY;
+  t->cant_run = t->cant_run + 1;
 
   // ensure preemption : compare priorities of current thread and t (to be unblocked),
   if (thread_current() != idle_thread && thread_current()->priority < t->priority )
@@ -667,6 +696,7 @@ thread_schedule_tail (struct thread *prev)
 
   /* Mark us as running. */
   cur->status = THREAD_RUNNING;
+  cur->cant_run = cur->cant_run + 1;
 
   /* Start new time slice. */
   thread_ticks = 0;

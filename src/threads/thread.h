@@ -103,6 +103,8 @@ struct thread
     // needed for priority donations
     struct lock *waiting_lock;          /* The lock object on which this thread is waiting (or NULL if not locked) */
     struct list locks;                  /* List of locks the thread holds (for multiple donations) */
+    int cant_run;
+    int cant_sleep;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -139,6 +141,13 @@ struct thread
     unsigned magic;                     /* Detects stack overflow. */
   };
 
+struct mini_thread{
+  tid_t tid;
+  int cant_sleep;
+  int cant_run;
+  int priority;
+};
+
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
@@ -161,6 +170,8 @@ void thread_sleep_until (int64_t wake_tick);
 struct thread *thread_current (void);
 tid_t thread_tid (void);
 const char *thread_name (void);
+
+int find_thread(struct mini_thread *mt);
 
 void thread_exit (void) NO_RETURN;
 void thread_yield (void);

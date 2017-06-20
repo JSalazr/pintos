@@ -153,6 +153,11 @@ munmap (mapid_t mapid)
   syscall1 (SYS_MUNMAP, mapid);
 }
 
+int 
+test(void *mt){
+  return syscall1 (SYS_TEST, mt);
+}
+
 bool
 chdir (const char *dir)
 {
